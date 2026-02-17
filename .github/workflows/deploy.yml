@@ -1,23 +1,51 @@
-name: Deploy to GitHub Pages
+# Простой рабочий процесс для развёртывания статического контента на GitHub Pages
+name: Deploy static content to Pages
+
 on:
+  # Запускается при пушах в целевую ветку по умолчанию
   push:
-    branches: [ main ] # или master, смотря какая у вас
+    branches: ['main']
+
+  # Позволяет вам запускать этот рабочий процесс вручную из вкладки Actions
+  workflow_dispatch:
+
+# Устанавливает разрешения для GITHUB_TOKEN, чтобы разрешить развёртывание на GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
+
+# Разрешает одно параллельное развёртывание
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
 jobs:
-  build-and-deploy:
+  # Один рабочий процесс, так как мы просто развёртываем
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: lts/*
           cache: 'npm'
-      - run: npm install
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
-      - uses: actions/deploy-pages@v4
+          # Загружаем папку dist
+          path: './dist'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
